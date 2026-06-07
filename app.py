@@ -5,18 +5,18 @@ import zoneinfo
 import random
 
 # -----------------------------------------
-# 1. 乗り場判定ロジック
+# 1. 乗り場判定ロジック（国際線はT2のみを4号へ、他は除外）
 # -----------------------------------------
 def assign_bus_stop(terminal, exit_gate, flight_type):
     if flight_type == "国際線":
+        # 国際線は、T2（第2ターミナル）のものだけを「4号乗り場」に載せる
         if terminal == "T2":
             return "4号乗り場"
         else:
-            if exit_gate in ["1", "2"]:
-                return "3号乗り場"
-            else:
-                return "4号乗り場"
+            # T3などの国際線は、どの乗り場にも割り振らず「除外（None）」にする
+            return None
     else:
+        # 国内線の割り振りルール
         if terminal == "T1":
             if exit_gate in ["1", "2", "3"]:
                 return "1号乗り場"
@@ -73,7 +73,7 @@ for i, tab in enumerate(tabs):
 # 4. データ生成・ボタン処理
 # -----------------------------------------
 if st.button("最新のフライト情報を取得"):
-    with st.spinner('現在時刻を中心に、29:00までの全フライトスケジュールを処理中...'):
+    with st.spinner('条件に合わせた大量のフライトスケジュールをリアルタイム処理中...'):
         
         dom_origins = ["札幌(新千歳)", "福岡", "大阪(伊丹)", "沖縄(那覇)", "広島", "鹿児島", "熊本", "長崎", "小松", "旭川", "函館", "青森", "南紀白浜", "出雲", "徳島", "富山", "米子", "鳥取", "高松", "大館能代", "庄内", "岩国", "宮崎", "秋田", "新潟", "大分"]
         int_origins = ["台北(松山)", "ソウル(仁川)", "香港", "バンコク", "シンガポール", "ホノルル", "マニラ", "ロサンゼルス", "シドニー", "ロンドン", "パリ", "フランクフルト", "デリー", "パース", "サンフランシスコ", "ニューヨーク", "上海(浦東)", "北京", "クアラルンプール", "ジャカルタ"]
@@ -92,7 +92,7 @@ if st.button("最新のフライト情報を取得"):
             
         flight_counter = 100
         
-        # 【変更】過去の便もしっかり遡れるように、-180分（3時間前）から29:00までを網羅生成
+        # 過去3時間前（-180分）から29:00までを満遍なく網羅生成
         for offset in range(-180, total_minutes, 4): 
             loop_time = start_time + timedelta(minutes=offset)
             loop_total_hours = loop_time.hour + (24 if loop_time.date() > now.date() else 0)
@@ -103,7 +103,7 @@ if st.button("最新のフライト情報を取得"):
             hour_24 = loop_time.hour
             is_night = (hour_24 >= 23 or hour_24 < 5)
             
-            random.seed(offset + 5555)
+            random.seed(offset + 9999) # 新しいシードでデータを安定生成
             
             spawn_chance = 0.9 if not is_night else 0.6
             if random.random() > spawn_chance:
@@ -122,12 +122,11 @@ if st.button("最新のフライト情報を取得"):
                 exit_gate = str(random.randint(1, 6))
                 airline = random.choice(["JL", "NH", "6J", "ADO", "SFJ"])
                 flight_num = f"{airline}{flight_counter:03d}"
-                # 過去の時間の便はステータスを「到着済み」にする
                 status = "到着済み" if offset < 0 else ("遅延" if random.random() < 0.05 else "定刻")
             else:
                 origin = random.choice(int_origins)
                 terminal = random.choice(["T2", "T3"])
-                exit_gate = str(random.randint(1, 4)) if terminal == "T3" else ""
+                exit_gate = str(random.randint(1, 4))
                 airline = random.choice(["NH", "JL", "CX", "SQ", "TG", "BR", "AA", "DL", "LH", "AF"])
                 flight_num = f"{airline}{flight_counter:03d}"
                 status = "到着済み" if offset < 0 else "定刻"
@@ -144,8 +143,16 @@ if st.button("最新のフライト情報を取得"):
                 "status": status
             })
 
+        processed_data = []
         for flight in raw_data:
-            flight["bus_stop"] = assign_bus_stop(flight["terminal"], flight["exit"], flight["type"])
+            # 乗り場を判定
+            bus_stop = assign_bus_stop(flight["terminal"], flight["exit"], flight["type"])
+            
+            # 【重要】乗り場が「None（除外）」になった国際線は、ここで完全にスキップ（削除）します
+            if bus_stop is None:
+                continue
+                
+            flight["bus_stop"] = bus_stop
             flight["capacity"] = estimate_aircraft_capacity(flight["flight"])
             
             try:
@@ -162,27 +169,31 @@ if st.button("最新のフライト情報を取得"):
                 flight["origin"] = f"🌐[国際] {flight['origin']}"
             else:
                 flight["origin"] = f"🇯🇵[国内] {flight['origin']}"
+                
+            processed_data.append(flight)
             
-        df = pd.DataFrame(raw_data)
-        df = df.sort_values(by="bus_stop_time")
-        
-        display_df = df[["bus_stop_time", "time", "origin", "flight", "capacity", "status", "bus_stop"]].rename(columns={
-            "bus_stop_time": "乗り場目安時刻",
-            "time": "(参考)便到着",
-            "origin": "出発地", 
-            "flight": "便名", 
-            "capacity": "規模・座席目安", 
-            "status": "状況"
-        })
+        if not processed_data:
+            st.warning("表示できるフライトデータがありません。")
+        else:
+            df = pd.DataFrame(processed_data)
+            df = df.sort_values(by="bus_stop_time")
+            
+            display_df = df[["bus_stop_time", "time", "origin", "flight", "capacity", "status", "bus_stop"]].rename(columns={
+                "bus_stop_time": "乗り場目安時刻",
+                "time": "(参考)便到着",
+                "origin": "出発地", 
+                "flight": "便名", 
+                "capacity": "規模・座席目安", 
+                "status": "状況"
+            })
 
-        for i, tab in enumerate(tabs):
-            bus_stop_name = f"{i+1}号乗り場"
-            filtered_df = display_df[display_df["bus_stop"] == bus_stop_name]
-            
-            with tab:
-                if filtered_df.empty:
-                    placeholders[i].info("現在、この乗り場に該当する到着便はありません。")
-                else:
-                    placeholders[i].empty()
-                    # 表をそのまま出力（上下スクロールで過去も未来もすべて見渡せます）
-                    st.dataframe(filtered_df.drop(columns=["bus_stop"]), use_container_width=True, hide_index=True)
+            for i, tab in enumerate(tabs):
+                bus_stop_name = f"{i+1}号乗り場"
+                filtered_df = display_df[display_df["bus_stop"] == bus_stop_name]
+                
+                with tab:
+                    if filtered_df.empty:
+                        placeholders[i].info("現在、この乗り場に該当する到着便はありません。")
+                    else:
+                        placeholders[i].empty()
+                        st.dataframe(filtered_df.drop(columns=["bus_stop"]), use_container_width=True, hide_index=True)
