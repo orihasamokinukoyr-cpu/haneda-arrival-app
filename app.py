@@ -68,7 +68,7 @@ def calculate_bus_stop_time(time_str, flight_type):
 st.set_page_config(page_title="羽田到着便 乗り場案内", layout="wide")
 st.title("羽田空港 到着便 乗り場案内")
 
-# サーバーの場所に関係なく、完全に日本時間に固定します
+# サーバーの場所に関関わらず、完全に日本時間に固定します
 import zoneinfo
 tokyo_zone = zoneinfo.ZoneInfo("Asia/Tokyo")
 now = datetime.now(tokyo_zone)
@@ -91,47 +91,67 @@ for i, tab in enumerate(tabs):
 
 # ボタンの処理
 if st.button("最新のフライト情報を取得"):
-    with st.spinner('29:00までのフライトスケジュールを生成中...'):
+    with st.spinner('29:00までの大量のフライトスケジュールを全乗り場に配分中...'):
         
-        # 29:00（13時間後）まで隙間なくカバーする大量のベースデータ
+        # 全ての乗り場（1〜4号）に満遍なく行き渡るように配置した40便以上のベースデータ
         base_data = [
-            # --- 夕方〜夜の便 ---
-            {"type": "国内線", "min_offset": -15, "origin": "札幌(新千歳)", "terminal": "T2", "exit": "5", "flight": "NH072", "status": "到着済み"},
-            {"type": "国内線", "min_offset": -5, "origin": "福岡", "terminal": "T1", "exit": "2", "flight": "JL318", "status": "到着済み"},
-            {"type": "国内線", "min_offset": 5, "origin": "大阪(伊丹)", "terminal": "T1", "exit": "3", "flight": "JL320", "status": "定刻"},
-            {"type": "国内線", "min_offset": 15, "origin": "沖縄(那覇)", "terminal": "T2", "exit": "4", "flight": "NH472", "status": "定刻"},
-            {"type": "国際線", "min_offset": 20, "origin": "台北(松山)", "terminal": "T2", "exit": "", "flight": "BR2176", "status": "定刻"},
-            {"type": "国内線", "min_offset": 45, "origin": "広島", "terminal": "T2", "exit": "6", "flight": "6J036", "status": "定刻"},
-            {"type": "国内線", "min_offset": 60, "origin": "鹿児島", "terminal": "T1", "exit": "1", "flight": "JL652", "status": "定刻"},
-            
-            # --- 夜〜深夜の便（+2時間〜+5時間後） ---
-            {"type": "国内線", "min_offset": 120, "origin": "札幌(新千歳)", "terminal": "T2", "exit": "5", "flight": "NH084", "status": "定刻"},
-            {"type": "国内線", "min_offset": 150, "origin": "福岡", "terminal": "T1", "exit": "3", "flight": "JL332", "status": "定刻"},
-            {"type": "国内線", "min_offset": 180, "origin": "沖縄(那覇)", "terminal": "T2", "exit": "4", "flight": "NH478", "status": "定刻"},
-            {"type": "国際線", "min_offset": 240, "origin": "ソウル(仁川)", "terminal": "T3", "exit": "1", "flight": "OZ178", "status": "定刻"},
-            {"type": "国際線", "min_offset": 300, "origin": "香港", "terminal": "T3", "exit": "2", "flight": "CX542", "status": "定刻"},
-            
-            # --- 深夜〜日付越えの便（+6時間〜+9時間後） ---
-            {"type": "国際線", "min_offset": 360, "origin": "バンコク", "terminal": "T3", "exit": "", "flight": "TG682", "status": "定刻"},
-            {"type": "国際線", "min_offset": 420, "origin": "シンガポール", "terminal": "T3", "exit": "3", "flight": "SQ636", "status": "定刻"},
-            {"type": "国際線", "min_offset": 480, "origin": "ホノルル", "terminal": "T2", "exit": "", "flight": "HA863", "status": "定刻"},
-            {"type": "国際線", "min_offset": 540, "origin": "マニラ", "terminal": "T3", "exit": "", "flight": "PR424", "status": "定刻"},
-            
-            # --- 明け方〜29:00（早朝5時）までの深夜便（+10時間〜+13時間後） ---
-            {"type": "国際線", "min_offset": 600, "origin": "ロサンゼルス", "terminal": "T3", "exit": "1", "flight": "AA027", "status": "定刻"},
-            {"type": "国際線", "min_offset": 660, "origin": "シドニー", "terminal": "T2", "exit": "", "flight": "NH880", "status": "定刻"},
-            {"type": "国際線", "min_offset": 720, "origin": "ロンドン", "terminal": "T3", "exit": "2", "flight": "JL044", "status": "定刻"},
-            {"type": "国際線", "min_offset": 750, "origin": "パリ", "terminal": "T3", "exit": "3", "flight": "AF274", "status": "定刻"},
-            {"type": "国際線", "min_offset": 780, "origin": "フランクフルト", "terminal": "T2", "exit": "", "flight": "LH716", "status": "定刻"}
+            # --- 1号乗り場へ向かう便（T1・出口1〜3、または特定の国際線） ---
+            {"type": "国内線", "min_offset": -15, "origin": "福岡", "terminal": "T1", "exit": "2", "flight": "JL318", "status": "到着済み"},
+            {"type": "国内線", "min_offset": -5, "origin": "大阪(伊丹)", "terminal": "T1", "exit": "3", "flight": "JL320", "status": "到着済み"},
+            {"type": "国内線", "min_offset": 15, "origin": "鹿児島", "terminal": "T1", "exit": "1", "flight": "JL652", "status": "定刻"},
+            {"type": "国内線", "min_offset": 45, "origin": "熊本", "terminal": "T1", "exit": "2", "flight": "JL634", "status": "定刻"},
+            {"type": "国内線", "min_offset": 90, "origin": "長崎", "terminal": "T1", "exit": "3", "flight": "JL612", "status": "定刻"},
+            {"type": "国内線", "min_offset": 150, "origin": "札幌(新千歳)", "terminal": "T1", "exit": "1", "flight": "JL524", "status": "定刻"},
+            {"type": "国内線", "min_offset": 240, "origin": "那覇", "terminal": "T1", "exit": "2", "flight": "JL916", "status": "定刻"},
+            {"type": "国内線", "min_offset": 360, "origin": "小松", "terminal": "T1", "exit": "3", "flight": "JL188", "status": "定刻"},
+            {"type": "国際線", "min_offset": 480, "origin": "パース", "terminal": "T3", "exit": "1", "flight": "NH882", "status": "定刻"},
+            {"type": "国際線", "min_offset": 660, "origin": "パリ", "terminal": "T3", "exit": "1", "flight": "AF274", "status": "定刻"},
+
+            # --- 2号乗り場へ向かう便（T1・出口4〜7、または特定の国際線） ---
+            {"type": "国内線", "min_offset": -10, "origin": "北九州", "terminal": "T1", "exit": "5", "flight": "SFJ082", "status": "到着済み"},
+            {"type": "国内線", "min_offset": 10, "origin": "旭川", "terminal": "T1", "exit": "4", "flight": "ADO084", "status": "定刻"},
+            {"type": "国内線", "min_offset": 35, "origin": "函館", "terminal": "T1", "exit": "6", "flight": "ADO060", "status": "定刻"},
+            {"type": "国内線", "min_offset": 70, "origin": "青森", "terminal": "T1", "exit": "4", "flight": "JL148", "status": "定刻"},
+            {"type": "国内線", "min_offset": 120, "origin": "南紀白浜", "terminal": "T1", "exit": "5", "flight": "JL218", "status": "定刻"},
+            {"type": "国内線", "min_offset": 200, "origin": "出雲", "terminal": "T1", "exit": "7", "flight": "JL284", "status": "定刻"},
+            {"type": "国内線", "min_offset": 300, "origin": "徳島", "terminal": "T1", "exit": "4", "flight": "JL464", "status": "定刻"},
+            {"type": "国際線", "min_offset": 450, "origin": "デリー", "terminal": "T3", "exit": "4", "flight": "AI306", "status": "定刻"},
+            {"type": "国際線", "min_offset": 580, "origin": "シドニー", "terminal": "T3", "exit": "5", "flight": "QF025", "status": "定刻"},
+            {"type": "国際線", "min_offset": 700, "origin": "ロンドン", "terminal": "T3", "exit": "4", "flight": "BA007", "status": "定刻"},
+
+            # --- 3号乗り場へ向かう便（T2・出口1〜3、または特定の国際線） ---
+            {"type": "国内線", "min_offset": -5, "origin": "富山", "terminal": "T2", "exit": "2", "flight": "NH320", "status": "到着済み"},
+            {"type": "国内線", "min_offset": 20, "origin": "米子", "terminal": "T2", "exit": "1", "flight": "NH386", "status": "定刻"},
+            {"type": "国内線", "min_offset": 55, "origin": "鳥取", "terminal": "T2", "exit": "3", "flight": "NH298", "status": "定刻"},
+            {"type": "国内線", "min_offset": 105, "origin": "高松", "terminal": "T2", "exit": "2", "flight": "NH538", "status": "定刻"},
+            {"type": "国内線", "min_offset": 180, "origin": "大館能代", "terminal": "T2", "exit": "1", "flight": "NH724", "status": "定刻"},
+            {"type": "国内線", "min_offset": 260, "origin": "庄内", "terminal": "T2", "exit": "3", "flight": "NH400", "status": "定刻"},
+            {"type": "国内線", "min_offset": 340, "origin": "岩国", "terminal": "T2", "exit": "2", "flight": "NH638", "status": "定刻"},
+            {"type": "国際線", "min_offset": 510, "origin": "バンコク", "terminal": "T3", "exit": "2", "flight": "TG682", "status": "定刻"},
+            {"type": "国際線", "min_offset": 620, "origin": "マニラ", "terminal": "T3", "exit": "3", "flight": "PR424", "status": "定刻"},
+            {"type": "国際線", "min_offset": 740, "origin": "フランクフルト", "terminal": "T3", "exit": "2", "flight": "LH716", "status": "定刻"},
+
+            # --- 4号乗り場へ向かう便（T2・出口4〜7、または特定の国際線/T2国際線） ---
+            {"type": "国内線", "min_offset": 0, "origin": "札幌(新千歳)", "terminal": "T2", "exit": "5", "flight": "NH072", "status": "定刻"},
+            {"type": "国内線", "min_offset": 25, "origin": "沖縄(那覇)", "terminal": "T2", "exit": "4", "flight": "NH472", "status": "定刻"},
+            {"type": "国内線", "min_offset": 40, "origin": "福岡", "terminal": "T2", "exit": "5", "flight": "NH264", "status": "定刻"},
+            {"type": "国内線", "min_offset": 60, "origin": "広島", "terminal": "T2", "exit": "6", "flight": "6J036", "status": "定刻"},
+            {"type": "国内線", "min_offset": 80, "origin": "小松", "terminal": "T2", "exit": "4", "flight": "NH756", "status": "定刻"},
+            {"type": "国内線", "min_offset": 130, "origin": "宮崎", "terminal": "T2", "exit": "5", "flight": "6J054", "status": "定刻"},
+            {"type": "国内線", "min_offset": 210, "origin": "鹿児島", "terminal": "T2", "exit": "6", "flight": "NH628", "status": "定刻"},
+            {"type": "国際線", "min_offset": -5, "origin": "青島", "terminal": "T2", "exit": "", "flight": "CA167", "status": "到着済み"},
+            {"type": "国際線", "min_offset": 5, "origin": "台北(松山)", "terminal": "T2", "exit": "", "flight": "BR2176", "status": "定刻"},
+            {"type": "国際線", "min_offset": 400, "origin": "ホノルル", "terminal": "T2", "exit": "", "flight": "HA863", "status": "定刻"},
+            {"type": "国際線", "min_offset": 550, "origin": "ロサンゼルス", "terminal": "T3", "exit": "7", "flight": "AA027", "status": "定刻"},
+            {"type": "国際線", "min_offset": 720, "origin": "シンガポール", "terminal": "T3", "exit": "6", "flight": "SQ636", "status": "定刻"},
         ]
         
         raw_data = []
         for base in base_data:
             flight_time = now + timedelta(minutes=base["min_offset"])
             
-            # 【修正ポイント】夜中の24時以降を「25:00」「29:00」のような表記に変換する処理
+            # 24時以降を「25:00」「29:00」のように変換
             total_hours = flight_time.hour
-            # もし日付が翌日に進んでいたら、時間に24を足して25時〜29時にします
             if flight_time.date() > now.date():
                 total_hours += 24
                 
@@ -151,7 +171,7 @@ if st.button("最新のフライト情報を取得"):
             flight["bus_stop"] = assign_bus_stop(flight["terminal"], flight["exit"], flight["type"])
             flight["capacity"] = estimate_aircraft_capacity(flight["flight"])
             
-            # バス乗り場目安時刻の計算（24時超えの表記を維持するため、ここで直接計算）
+            # バス乗り場目安時刻の計算（24時超え表記を維持）
             try:
                 h, m = map(int, flight["time"].split(":"))
                 if flight["type"] == "国内線":
@@ -182,6 +202,7 @@ if st.button("最新のフライト情報を取得"):
             "status": "状況"
         })
 
+        # 各タブに偏りなくデータを流し込みます
         for i, tab in enumerate(tabs):
             bus_stop_name = f"{i+1}号乗り場"
             filtered_df = display_df[display_df["bus_stop"] == bus_stop_name]
