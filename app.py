@@ -73,21 +73,27 @@ for i, tab in enumerate(tabs):
 # 4. データ生成・ボタン処理
 # -----------------------------------------
 if st.button("最新のフライト情報を取得"):
-    with st.spinner('現在時刻から29:00までの全120便以上のスケジュールを処理中...'):
+    with st.spinner('現在時刻を中心に、29:00までの全フライトスケジュールを処理中...'):
         
         dom_origins = ["札幌(新千歳)", "福岡", "大阪(伊丹)", "沖縄(那覇)", "広島", "鹿児島", "熊本", "長崎", "小松", "旭川", "函館", "青森", "南紀白浜", "出雲", "徳島", "富山", "米子", "鳥取", "高松", "大館能代", "庄内", "岩国", "宮崎", "秋田", "新潟", "大分"]
         int_origins = ["台北(松山)", "ソウル(仁川)", "香港", "バンコク", "シンガポール", "ホノルル", "マニラ", "ロサンゼルス", "シドニー", "ロンドン", "パリ", "フランクフルト", "デリー", "パース", "サンフランシスコ", "ニューヨーク", "上海(浦東)", "北京", "クアラルンプール", "ジャカルタ"]
         
         raw_data = []
+        
+        # ボタンを押した「現在の時間」の5分前を切り捨て基準にする
         start_time = now.replace(minute=now.minute - (now.minute % 5), second=0, microsecond=0)
+        
+        # 翌朝5時（29:00）までの総時間を計算
         target_end = now.replace(hour=5, minute=0, second=0, microsecond=0) + timedelta(days=1)
         total_minutes = int((target_end - start_time).total_seconds() / 60)
         
-        if total_minutes < 720:
-            total_minutes = 900
+        if total_minutes < 1440:
+            total_minutes = 1440
             
         flight_counter = 100
-        for offset in range(-30, total_minutes, 5):
+        
+        # 【変更】過去の便もしっかり遡れるように、-180分（3時間前）から29:00までを網羅生成
+        for offset in range(-180, total_minutes, 4): 
             loop_time = start_time + timedelta(minutes=offset)
             loop_total_hours = loop_time.hour + (24 if loop_time.date() > now.date() else 0)
             
@@ -97,8 +103,9 @@ if st.button("最新のフライト情報を取得"):
             hour_24 = loop_time.hour
             is_night = (hour_24 >= 23 or hour_24 < 5)
             
-            random.seed(offset + 2026)
-            spawn_chance = 0.7 if not is_night else 0.4
+            random.seed(offset + 5555)
+            
+            spawn_chance = 0.9 if not is_night else 0.6
             if random.random() > spawn_chance:
                 continue
                 
@@ -115,6 +122,7 @@ if st.button("最新のフライト情報を取得"):
                 exit_gate = str(random.randint(1, 6))
                 airline = random.choice(["JL", "NH", "6J", "ADO", "SFJ"])
                 flight_num = f"{airline}{flight_counter:03d}"
+                # 過去の時間の便はステータスを「到着済み」にする
                 status = "到着済み" if offset < 0 else ("遅延" if random.random() < 0.05 else "定刻")
             else:
                 origin = random.choice(int_origins)
@@ -176,4 +184,5 @@ if st.button("最新のフライト情報を取得"):
                     placeholders[i].info("現在、この乗り場に該当する到着便はありません。")
                 else:
                     placeholders[i].empty()
+                    # 表をそのまま出力（上下スクロールで過去も未来もすべて見渡せます）
                     st.dataframe(filtered_df.drop(columns=["bus_stop"]), use_container_width=True, hide_index=True)
