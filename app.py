@@ -10,21 +10,21 @@ import random
 def assign_bus_stop(terminal, exit_gate, flight_type):
     if flight_type == "国際線":
         if terminal == "T2":
-            return "4号乗り場"
+            return "4号乗り場"  # 国際線はT2のみ4号
         else:
-            return None  # T2以外の国際線は完全に除外
+            return None  # T3などの国際線は除外
     else:
-        # 国内線（T1・T2）の振り分け
+        # 国内線の振り分け（4号乗り場にも早朝〜最終までしっかり国内線が入る）
         if terminal == "T1":
             if exit_gate in ["1", "2", "3"]:
                 return "1号乗り場"
             else:
                 return "2号乗り場"
-        else:
+        else:  # T2国内線
             if exit_gate in ["1", "2", "3"]:
                 return "3号乗り場"
             else:
-                return "4号乗り場"
+                return "4号乗り場"  # T2国内線の出口4, 5, 6は4号乗り場へ！
 
 # -----------------------------------------
 # 2. UI & 機材規模予測
@@ -58,62 +58,66 @@ for i, tab in enumerate(tabs):
         placeholders.append(ph)
 
 # -----------------------------------------
-# 3. データ生成（遅延便のみが深夜にズレ込む新ロジック）
+# 3. データ生成（当日の早朝5:00から翌朝29:00までを網羅）
 # -----------------------------------------
 if st.button("最新のフライト情報を取得"):
-    with st.spinner('リアルタイムの運航状況（遅延情報含む）を反映中...'):
+    with st.spinner('リアルタイムの運航状況（早朝から最終便まで）を処理中...'):
         
         dom_origins = ["札幌(新千歳)", "福岡", "大阪(伊丹)", "沖縄(那覇)", "広島", "鹿児島", "熊本", "長崎", "小松", "旭川", "函館", "青森", "南紀白浜", "出雲", "徳島", "富山", "米子", "鳥取", "高松", "大館能代", "庄内", "岩国", "宮崎", "秋田", "新潟", "大分"]
-        int_origins = ["台北(松山)", "ソウル(仁川)", "香港", "バンコク", "シンガポール", "ホノルル", "マニラ", "ロサンゼルス", "シドニー", "ロンドン", "パリ", "フランクフルト", "デリー", "パース", "サンフランシスコ", "ニューヨーク", "上海(浦東)", "北京", "クアラルンプール", "ジャカルタ"]
+        int_origins = ["ホノルル", "シンガポール", "香港", "ニューヨーク", "クアラルンプール", "北京", "パリ", "バンコク", "ソウル(仁川)", "台北(松山)", "ロサンゼルス", "ロンドン", "フランクフルト", "サンフランシスコ", "シドニー", "マニラ", "上海(浦東)"]
         
-        # タイムラインの基準（今日〜翌朝5:00まで）
-        start_time = now.replace(minute=now.minute - (now.minute % 5), second=0, microsecond=0)
-        target_end = now.replace(hour=5, minute=0, second=0, microsecond=0) + timedelta(days=1)
-        total_minutes = int((target_end - start_time).total_seconds() / 60)
-        if total_minutes < 1440: total_minutes = 1440
+        # タイムラインを【当日の早朝5:00】から開始するように固定（これにより全時間帯が載ります）
+        base_start_day = now.replace(hour=5, minute=0, second=0, microsecond=0)
+        # もし現在時刻が深夜0:00〜4:59の間なら、基準は「前日の朝5:00」にする
+        if now.hour < 5:
+            base_start_day = base_start_day - timedelta(days=1)
             
         raw_data = []
         flight_counter = 100
         
-        # 過去3時間（-180分）から29:00までの全時間帯をループ処理
-        for offset in range(-180, total_minutes, 5): 
-            loop_time = start_time + timedelta(minutes=offset)
-            loop_total_hours = loop_time.hour + (24 if loop_time.date() > now.date() else 0)
+        # 当日朝5:00(0分)から、翌朝5:00(1440分)まで5分刻みで1日分をフル網羅生成
+        for minutes_offset in range(0, 1445, 5): 
+            loop_time = base_start_day + timedelta(minutes=minutes_offset)
+            
+            # 24時間表記を「25:00」「28:00」にするための計算
+            is_next_day = (loop_time.date() > base_start_day.date())
+            loop_total_hours = loop_time.hour + (24 if is_next_day else 0)
             
             # 翌朝29:00（5:00）を超えたら終了
             if loop_total_hours >= 29 and loop_time.minute > 0:
                 break
                 
-            # シード値を固定してリロード時のデータ一貫性を担保
-            random.seed(offset + 99955)
+            # 再現性維持のためシードを固定
+            random.seed(minutes_offset + 24680)
             
-            # 1. 国際線の生成ロジック（24時間いつでも飛ぶ・T2固定）
-            # 1時間に1〜2本程度ポツポツと発生させる確率設定
-            if random.random() < 0.25:
+            # 1. 国際線の生成（24時間いつでもポツポツ飛んでくる）
+            if random.random() < 0.20:
                 flight_counter += 1
                 origin = random.choice(int_origins)
                 terminal = "T2" 
                 exit_gate = str(random.randint(1, 4))
-                airline = random.choice(["NH", "JL", "CX", "SQ", "TG", "BR", "AA", "DL", "LH", "AF"])
+                airline = random.choice(["NH", "JL", "SQ", "CX", "TG", "MH", "BR"])
                 flight_num = f"{airline}{flight_counter:03d}"
-                status = "到着済み" if offset < 0 else "定刻"
+                
+                # 現在時刻より前か後かでステータス初期値を設定
+                status = "到着済み" if loop_time < now else "定刻"
                 
                 raw_data.append({
-                    "type": "国際線",
+                    "type": "国際线",
                     "base_h": loop_total_hours,
                     "base_m": loop_time.minute,
                     "origin": origin,
                     "terminal": terminal,
                     "exit": exit_gate,
                     "flight": flight_num,
-                    "status": status
+                    "status": status,
+                    "loop_time_obj": loop_time
                 })
                 
-            # 2. 国内線の生成ロジック（★定刻ベースで23:00までに限定！）
-            # 昼間はたくさん飛ぶが、23時以降は新規の定刻出発便は絶対に作らない
-            if loop_total_hours < 23:
-                # 5分毎に約65%の確率で国内線が発生
-                if random.random() < 0.65:
+            # 2. 国内線の生成（★定刻ベースは朝6:00〜夜23:00までに限定！）
+            if 6 <= loop_total_hours < 23:
+                # 昼間は過密スケジュール
+                if random.random() < 0.70:
                     flight_counter += 1
                     origin = random.choice(dom_origins)
                     terminal = random.choice(["T1", "T2"])
@@ -121,40 +125,38 @@ if st.button("最新のフライト情報を取得"):
                     airline = random.choice(["JL", "NH", "6J", "ADO", "SFJ"])
                     flight_num = f"{airline}{flight_counter:03d}"
                     
-                    # 過去便は「到着済み」、未来便はたまに「遅延」を発生させる
-                    if offset < 0:
-                        status = "到着済み"
-                        delay_minutes = 0
-                    else:
-                        # 【重要】約8%の確率で、本日の沖縄便のような「大規模遅延」を発生させる
-                        if random.random() < 0.08:
+                    status = "到着済み" if loop_time < now else "定刻"
+                    delay_minutes = 0
+                    
+                    # 未来の便、かつ夜間帯（20時〜23時など）の便は、一部突発的な大幅遅延を発生させる（約10%）
+                    if loop_time >= now and 20 <= loop_total_hours < 23:
+                        if random.random() < 0.10:
                             status = "遅延"
-                            # 60分〜200分（最大3時間超）の遅延を与えて深夜に押し出す
-                            delay_minutes = random.randint(60, 200)
-                        else:
-                            status = "定刻"
-                            delay_minutes = 0
+                            delay_minutes = random.randint(60, 180)  # 最大3時間遅れて深夜にズレ込む
                             
-                    # 遅延時間をベース時刻に加算
                     calc_h = loop_total_hours
                     calc_m = loop_time.minute + delay_minutes
                     if calc_m >= 60:
                         calc_h += calc_m // 60
                         calc_m = calc_m % 60
                         
+                    # 遅延後の実際の上陸予定時刻オブジェクト
+                    final_loop_time = loop_time + timedelta(minutes=delay_minutes)
+                    
                     raw_data.append({
                         "type": "国内線",
-                        "base_h": calc_h, # 遅延した場合はこの値が24時や25時になる
+                        "base_h": calc_h,
                         "base_m": calc_m,
                         "origin": origin,
                         "terminal": terminal,
                         "exit": exit_gate,
                         "flight": flight_num,
-                        "status": status
+                        "status": status,
+                        "loop_time_obj": final_loop_time
                     })
 
         # -----------------------------------------
-        # 4. 乗り場へのマッピングと時間整形
+        # 4. データのマッピングと時間整形
         # -----------------------------------------
         processed_data = []
         for flight in raw_data:
@@ -164,7 +166,7 @@ if st.button("最新のフライト情報を取得"):
             flight["bus_stop"] = bus_stop
             flight["capacity"] = estimate_aircraft_capacity(flight["flight"])
             
-            # 便到着時刻を文字列化
+            # 便到着時刻の決定
             flight["time"] = f"{flight['base_h']:02d}:{flight['base_m']:02d}"
             
             # 乗り場目安時刻の計算（国内線+15分、国際線+30分）
@@ -176,11 +178,15 @@ if st.button("最新のフライト情報を取得"):
                 m = m % 60
             flight["bus_stop_time"] = f"{h:02d}:{m:02d}"
             
-            # 営業終了の29:00（早朝5:00）を超えたデータはカット
+            # 29:00を超えたデータは表示カット
             if flight["bus_stop_time"] >= "29:00":
                 continue
             
-            # アイコン付与
+            # ステータスの最終補正（遅延以外で、すでに目安時刻を過ぎている未来判定のものは到着済みに更新）
+            if flight["status"] == "定刻" and flight["loop_time_obj"] < now:
+                flight["status"] = "到着済み"
+            
+            # テキスト装飾
             if flight["type"] == "国際線":
                 flight["origin"] = f"🌐[国際] {flight['origin']}"
             else:
@@ -192,7 +198,7 @@ if st.button("最新のフライト情報を取得"):
             processed_data.append(flight)
             
         # -----------------------------------------
-        # 5. 画面への最終出力
+        # 5. 各タブ画面への出力
         # -----------------------------------------
         if not processed_data:
             st.warning("表示できるフライトデータがありません。")
