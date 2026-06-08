@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>並べ替え</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#003087">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="羽田到着便">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a1a; }
+
+  .header {
+    background: #003087;
+    color: #fff;
+    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; }
+  .header-sub { font-size: 11px; opacity: 0.8; margin-top: 2px; display: flex; justify-content: space-between; align-items: center; }
+
+  .refresh-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .refresh-btn:active { background: rgba(255,255,255,0.4); }
+
+  /* Date picker bar */
+  .date-bar {
+    background: #fff;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 13px;
+  }
+  .date-bar label { color: #555; }
+  .date-bar input[type=date] {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+  .date-bar button {
+    background: #003087;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid #e0e0e0;
+    position: sticky;
+    top: 60px;
+    z-index: 90;
+    overflow-x: auto;
+  }
+  .tab {
+    flex: 1;
+    min-width: 90px;
+    padding: 10px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    user-select: none;
+    transition: color 0.15s;
+  }
+  .tab.active {
+    color: #003087;
+    border-bottom-color: #003087;
+  }
+  .tab-count {
+    display: inline-block;
+    background: #e8ecf4;
+    color: #003087;
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 10px;
+    margin-left: 3px;
+  }
+  .tab.active .tab-count { background: #003087; color: #fff; }
+
+  /* Gate panels */
+  .panels { padding: 8px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Gate info banner */
+  .gate-info {
+    background: #e8ecf4;
+    border-left: 4px solid #003087;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 0 6px 6px 0;
+    font-size: 12px;
+    color: #444;
+  }
+  .gate-info strong { color: #003087; font-size: 14px; }
+
+  /* Loading / Error */
+  .loading { text-align: center; padding: 40px 16px; color: #888; font-size: 14px; }
+  .error { text-align: center; padding: 30px 16px; color: #c0392b; font-size: 13px; }
+
+  /* Flight card */
+  .flight-card {
+    background: #fff;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    padding: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    display: grid;
+    grid-template-columns: 62px 1fr auto;
+    gap: 0 10px;
+    align-items: start;
+    position: relative;
+  }
+  .flight-card.arrived { opacity: 1; }
+
+  /* Time column */
+  .time-col { text-align: center; }
+  .time-adjusted {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1a1a1a;
+    line-height: 1.1;
+  }
+  .time-adjusted.delayed { color: #e74c3c; }
+  .time-label { font-size: 9px; color: #999; margin-top: 1px; }
+  .time-original {
+    font-size: 10px;
+    color: #999;
+    text-decoration: line-through;
+    margin-top: 3px;
+  }
+
+  /* Main info */
+  .main-col {}
+  .area-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    line-height: 1.2;
+  }
+  .via-area { font-size: 11px; color: #888; }
+  .airlines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .airline-chip {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: #444;
+  }
+  .airline-chip img { width: 16px; height: 16px; object-fit: contain; }
+  .flight-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+  .meta-item { font-size: 11px; color: #666; display: flex; align-items: center; gap: 3px; }
+  .meta-item .label { color: #999; }
+
+  /* Status badge */
+  .status-col { text-align: right; }
+  .status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .status-delayed { background: #fdecea; color: #c0392b; }
+  .status-canceled { background: #f0f0f0; color: #666; }
+  .status-arrived { background: #eafaf1; color: #27ae60; }
+  .status-normal { background: #eaf3ff; color: #2980b9; }
+
+  /* Gate badges */
+  .exit-gates { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .exit-gate-badge {
+    display: inline-block;
+    background: #003087;
+    color: #fff;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* International badge */
+  .intl-badge {
+    display: inline-block;
+    background: #8e44ad;
+    color: #fff;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 9px;
+    font-weight: 700;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+
+  /* Auto-refresh indicator */
+  .refresh-indicator {
+    font-size: 10px;
+    color: rgba(255,255,255,0.7);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .refresh-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #4caf50;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .empty { text-align: center; padding: 30px; color: #999; font-size: 13px; }
+
+  /* Summary bar */
+  .summary {
+    background: #fff;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: #666;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .summary-item { display: flex; align-items: center; gap: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🛬 羽田空港 乗り場別到着便ビューアー</h1>
+  <div class="header-sub">
+    <span id="fetchTime">読み込み中...</span>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="refresh-indicator"><div class="refresh-dot"></div><span id="nextRefresh"></span></div>
+      <button class="refresh-btn" onclick="loadData()">↻ 更新</button>
+    </div>
+  </div>
+</div>
+
+<div class="date-bar">
+  <label for="datePicker">日付：</label>
+  <input type="date" id="datePicker">
+  <button onclick="loadData()">検索</button>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-gate="1号乗り場" onclick="switchTab('1号乗り場')">
+    1号乗り場<span class="tab-count" id="cnt-1">0</span>
+  </div>
+  <div class="tab" data-gate="2号乗り場" onclick="switchTab('2号乗り場')">
+    2号乗り場<span class="tab-count" id="cnt-2">0</span>
+  </div>
+  <div class="tab" data-gate="3号乗り場" onclick="switchTab('3号乗り場')">
+    3号乗り場<span class="tab-count" id="cnt-3">0</span>
+  </div>
+  <div class="tab" data-gate="4号乗り場" onclick="switchTab('4号乗り場')">
+    4号乗り場<span class="tab-count" id="cnt-4">0</span>
+  </div>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div class="panels" id="panels">
+  <div class="loading">データを取得中...</div>
+</div>
+
+<script>
+const GATE_INFO = {
+  '1号乗り場': { terminal: 'T1', exits: '出口 1〜4番', desc: 'T1 (第1ターミナル) 出口1〜4番' },
+  '2号乗り場': { terminal: 'T1', exits: '出口 5〜8番', desc: 'T1 (第1ターミナル) 出口5〜8番' },
+  '3号乗り場': { terminal: 'T2', exits: '出口 1〜3番', desc: 'T2 (第2ターミナル) 出口1〜3番' },
+  '4号乗り場': { terminal: 'T2', exits: '出口 4〜6番 / 国際線T2', desc: 'T2 (第2ターミナル) 出口4〜6番 + 国際線T2' },
+};
+
+let currentGate = '1号乗り場';
+let lastData = null;
+let refreshTimer = null;
+let countdownTimer = null;
+let countdownSec = 60;
+
+// Set date picker to today
+const today = new Date();
+const dp = document.getElementById('datePicker');
+dp.value = today.toISOString().slice(0, 10);
+
+function switchTab(gate) {
+  currentGate = gate;
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.gate === gate);
+  });
+  if (lastData) renderPanel(lastData);
+}
+
+function statusClass(cat) {
+  if (cat === 'arrived') return 'status-arrived';
+  if (cat === 'canceled') return 'status-canceled';
+  if (cat === 'delayed') return 'status-delayed';
+  return 'status-normal';
+}
+
+function statusText(s) {
+  return s && s.text ? s.text : '運航中';
+}
+
+function renderCard(f) {
+  const isArrived = f.status && f.status.category === 'arrived';
+  const isDelayed = f.isDelayed;
+  const isCanceled = f.status && f.status.category === 'canceled';
+  const intlBadge = f.flightType === 'international' ? '<span class="intl-badge">国際線</span>' : '';
+
+  const exits = f.exitGates.length > 0
+    ? `<div class="exit-gates">${f.exitGates.map(g => `<span class="exit-gate-badge">出口${g}</span>`).join('')}</div>`
+    : '';
+
+  const modelInfo = f.modelCode
+    ? `<span class="meta-item"><span class="label">機種</span> ${f.modelCode}</span>`
+    : '';
+  const seatsInfo = f.seats
+    ? `<span class="meta-item"><span class="label">座席数</span> 約${f.seats}席</span>`
+    : '';
+
+  const timeDisplay = f.adjustedTime || f.displayTime;
+  const originalTime = isDelayed
+    ? `<div class="time-original">定刻 ${f.scheduledTime}</div>`
+    : '';
+
+  const statusBadge = `<span class="status-badge ${statusClass(f.status && f.status.category)}">${statusText(f.status)}</span>`;
+
+  const airlinesHtml = f.airlines.map(a =>
+    `<span class="airline-chip">
+      <img src="https://tokyo-haneda.com${a.icon}" onerror="this.style.display='none'" alt="${a.code}">
+      <span>${a.code} ${a.flightNumber}</span>
+    </span>`
+  ).join('');
+
+  return `
+    <div class="flight-card ${isArrived ? 'arrived' : ''}">
+      <div class="time-col">
+        <div class="time-adjusted ${isDelayed ? 'delayed' : ''}">${isCanceled ? '--:--' : (timeDisplay || '--:--')}</div>
+        <div class="time-label">${f.flightType === 'international' ? '+30分' : '+15分'}</div>
+        ${originalTime}
+      </div>
+      <div class="main-col">
+        <div class="area-name">${f.area}${intlBadge}</div>
+        ${f.viaArea ? `<div class="via-area">経由: ${f.viaArea}</div>` : ''}
+        <div class="airlines">${airlinesHtml}</div>
+        ${exits}
+        <div class="flight-meta">
+          ${modelInfo}
+          ${seatsInfo}
+        </div>
+      </div>
+      <div class="status-col">${statusBadge}</div>
+    </div>`;
+}
+
+function renderPanel(data) {
+  const gates = data.gates;
+  const gateNames = ['1号乗り場', '2号乗り場', '3号乗り場', '4号乗り場'];
+  const cntMap = { '1号乗り場': 'cnt-1', '2号乗り場': 'cnt-2', '3号乗り場': 'cnt-3', '4号乗り場': 'cnt-4' };
+
+  // Update counts
+  gateNames.forEach(g => {
+    const cnt = (gates[g] || []).length;
+    document.getElementById(cntMap[g]).textContent = cnt;
+  });
+
+  const flights = gates[currentGate] || [];
+  const info = GATE_INFO[currentGate];
+
+  let html = `<div class="panel active">
+    <div class="gate-info">
+      <strong>${currentGate}</strong> — ${info.desc}
+      <br><small>※ 表示時刻は到着予定時刻の概算（国内線: 着陸+15分 / 国際線: 着陸+30分）</small>
+    </div>`;
+
+  if (flights.length === 0) {
+    html += '<div class="empty">この乗り場に該当する便はありません</div>';
+  } else {
+    flights.forEach(f => { html += renderCard(f); });
+  }
+
+  html += '</div>';
+  document.getElementById('panels').innerHTML = html;
+}
+
+function updateSummary(data) {
+  const total = Object.values(data.gates).reduce((s, a) => s + a.length, 0);
+  const intl = Object.values(data.gates).reduce((s, a) => s + a.filter(f => f.flightType === 'international').length, 0);
+  const delayed = Object.values(data.gates).reduce((s, a) => s + a.filter(f => f.isDelayed).length, 0);
+  const canceled = Object.values(data.gates).reduce((s, a) => s + a.filter(f => f.status && f.status.category === 'canceled').length, 0);
+
+  document.getElementById('summary').innerHTML = `
+    <span class="summary-item">全便数: <strong>${total}</strong></span>
+    <span class="summary-item">国際線: <strong>${intl}</strong></span>
+    <span class="summary-item">遅延: <strong style="color:#e74c3c">${delayed}</strong></span>
+    <span class="summary-item">欠航: <strong style="color:#888">${canceled}</strong></span>
+  `;
+}
+
+async function loadData() {
+  const dateVal = document.getElementById('datePicker').value.replace(/-/g, '');
+  document.getElementById('panels').innerHTML = '<div class="loading">データを取得中...</div>';
+  document.getElementById('fetchTime').textContent = '取得中...';
+
+  try {
+    const res = await fetch(`/api/flights?date=${dateVal}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    lastData = data;
+
+    const d = new Date(data.fetchedAt);
+    document.getElementById('fetchTime').textContent =
+      `更新: ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+
+    updateSummary(data);
+    renderPanel(data);
+    scrollToCurrentTime();
+
+    // Reset countdown
+    countdownSec = 60;
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+      countdownSec--;
+      document.getElementById('nextRefresh').textContent = `次の更新 ${countdownSec}秒後`;
+      if (countdownSec <= 0) {
+        clearInterval(countdownTimer);
+        loadData();
+      }
+    }, 1000);
+  } catch (e) {
+    document.getElementById('panels').innerHTML = `<div class="error">データの取得に失敗しました。<br>${e.message}</div>`;
+    document.getElementById('fetchTime').textContent = 'エラー';
+  }
+}
+
+function scrollToCurrentTime() {
+  const now = new Date();
+  let h = now.getHours();
+  const m = now.getMinutes();
+  if (h < 7) h += 24;
+  const nowMin = h * 60 + m;
+
+  const cards = document.querySelectorAll('.flight-card');
+  let targetCard = null;
+
+  cards.forEach(card => {
+    if (targetCard) return;
+    const timeEl = card.querySelector('.time-adjusted');
+    if (!timeEl) return;
+    const timeStr = timeEl.textContent.trim();
+    if (timeStr === '--:--') return;
+    const parts = timeStr.split(':');
+    if (parts.length !== 2) return;
+    let ch = parseInt(parts[0]);
+    const cm = parseInt(parts[1]);
+    if (ch < 7) ch += 24;
+    const cardMin = ch * 60 + cm;
+    if (cardMin >= nowMin) targetCard = card;
+  });
+
+  if (targetCard) {
+    setTimeout(() => {
+      targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  }
+}
+
+loadData();
+
+// Service Worker登録
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "羽田空港 乗り場別到着便",
+  "short_name": "羽田到着便",
+  "description": "羽田空港の乗り場別到着便をリアルタイムで確認",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#003087",
+  "theme_color": "#003087",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
