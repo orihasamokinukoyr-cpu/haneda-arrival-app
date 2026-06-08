@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: haneda-arrival-app
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: APP_PASSWORD
+        value: 4923
