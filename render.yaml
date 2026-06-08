@@ -2,8 +2,11 @@ services:
   - type: web
     name: haneda-arrival-app
     env: node
+    plan: free
     buildCommand: npm install
     startCommand: node server.js
     envVars:
       - key: APP_PASSWORD
-        value: 4923
+        value: "4923"
+      - key: NODE_VERSION
+        value: "18"
