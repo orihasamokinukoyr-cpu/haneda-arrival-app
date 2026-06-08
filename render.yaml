@@ -1,7 +1,7 @@
 services:
   - type: web
     name: haneda-arrival-app
-    runtime: node
+    env: node
     buildCommand: npm install
     startCommand: node server.js
     envVars:
