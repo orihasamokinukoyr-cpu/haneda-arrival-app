@@ -429,9 +429,8 @@ function renderPanel(data) {
     const wc = calcWindowCount(flights);
     const winEl = document.getElementById(winMap[g]);
     if (wc !== null) {
-      const intlColor = wc.intl === 0 ? 'color:#e74c3c;' : '';
       const intlLine = (g === '4号乗り場')
-        ? `<br><span style="${intlColor}">(内国際線${wc.intl}便)</span>` : '';
+        ? `<br>(内国際線<span style="color:#e74c3c;font-size:13px;">${wc.intl}便</span>)` : '';
       winEl.innerHTML = `前10分-後1h: <span style="color:#e74c3c;font-size:13px;">+${wc.total}便</span>${intlLine}`;
     } else {
       winEl.textContent = '';
