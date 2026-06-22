@@ -403,10 +403,13 @@ function calcWindowCount(flights) {
   const first = flights[0];
   const baseMin = first.adjustedMinutes;
   if (baseMin === Infinity) return null;
-  // count flights in [baseMin-10, baseMin+60], excluding first flight itself
-  return flights.slice(1).filter(f =>
+  const inWindow = flights.slice(1).filter(f =>
     f.adjustedMinutes >= baseMin - 10 && f.adjustedMinutes <= baseMin + 60
-  ).length;
+  );
+  return {
+    total: inWindow.length,
+    intl: inWindow.filter(f => f.flightType === 'international').length,
+  };
 }
 
 function renderPanel(data) {
@@ -426,7 +429,9 @@ function renderPanel(data) {
     const wc = calcWindowCount(flights);
     const winEl = document.getElementById(winMap[g]);
     if (wc !== null) {
-      winEl.innerHTML = `前10分-後1h: <span style="color:#e74c3c;font-size:13px;">+${wc}便</span>`;
+      const intlLine = (g === '4号乗り場' && wc.intl > 0)
+        ? `<br>(内国際線${wc.intl}便)` : '';
+      winEl.innerHTML = `前10分-後1h: <span style="color:#e74c3c;font-size:13px;">+${wc.total}便</span>${intlLine}`;
     } else {
       winEl.textContent = '';
     }
