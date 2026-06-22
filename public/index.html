@@ -102,6 +102,14 @@
     margin-left: 3px;
   }
   .tab.active .tab-count { background: #003087; color: #fff; }
+  .tab-window {
+    font-size: 10px;
+    color: #e67e22;
+    font-weight: 700;
+    margin-top: 2px;
+    white-space: nowrap;
+  }
+  .tab.active .tab-window { color: #e67e22; }
 
   /* Gate panels */
   .panels { padding: 8px; }
@@ -278,15 +286,19 @@
 <div class="tabs" id="tabs">
   <div class="tab active" data-gate="1号乗り場" onclick="switchTab('1号乗り場')">
     1号乗り場<span class="tab-count" id="cnt-1">0</span>
+    <div class="tab-window" id="win-1"></div>
   </div>
   <div class="tab" data-gate="2号乗り場" onclick="switchTab('2号乗り場')">
     2号乗り場<span class="tab-count" id="cnt-2">0</span>
+    <div class="tab-window" id="win-2"></div>
   </div>
   <div class="tab" data-gate="3号乗り場" onclick="switchTab('3号乗り場')">
     3号乗り場<span class="tab-count" id="cnt-3">0</span>
+    <div class="tab-window" id="win-3"></div>
   </div>
   <div class="tab" data-gate="4号乗り場" onclick="switchTab('4号乗り場')">
     4号乗り場<span class="tab-count" id="cnt-4">0</span>
+    <div class="tab-window" id="win-4"></div>
   </div>
 </div>
 
@@ -386,15 +398,34 @@ function renderCard(f) {
     </div>`;
 }
 
+function calcWindowCount(flights) {
+  if (!flights || flights.length === 0) return null;
+  const first = flights[0];
+  const baseMin = first.adjustedMinutes;
+  if (baseMin === Infinity) return null;
+  // count flights in [baseMin-10, baseMin+60], excluding first flight itself
+  return flights.slice(1).filter(f =>
+    f.adjustedMinutes >= baseMin - 10 && f.adjustedMinutes <= baseMin + 60
+  ).length;
+}
+
 function renderPanel(data) {
   const gates = data.gates;
   const gateNames = ['1号乗り場', '2号乗り場', '3号乗り場', '4号乗り場'];
   const cntMap = { '1号乗り場': 'cnt-1', '2号乗り場': 'cnt-2', '3号乗り場': 'cnt-3', '4号乗り場': 'cnt-4' };
+  const winMap = { '1号乗り場': 'win-1', '2号乗り場': 'win-2', '3号乗り場': 'win-3', '4号乗り場': 'win-4' };
 
-  // Update counts
+  // Update counts and window counts
   gateNames.forEach(g => {
-    const cnt = (gates[g] || []).length;
-    document.getElementById(cntMap[g]).textContent = cnt;
+    const flights = gates[g] || [];
+    document.getElementById(cntMap[g]).textContent = flights.length;
+    const wc = calcWindowCount(flights);
+    const winEl = document.getElementById(winMap[g]);
+    if (wc !== null) {
+      winEl.textContent = `前後1h: +${wc}便`;
+    } else {
+      winEl.textContent = '';
+    }
   });
 
   const flights = gates[currentGate] || [];
