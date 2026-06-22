@@ -418,7 +418,11 @@ function renderPanel(data) {
   // Update counts and window counts
   gateNames.forEach(g => {
     const flights = gates[g] || [];
-    document.getElementById(cntMap[g]).textContent = flights.length;
+    const intlCount = flights.filter(f => f.flightType === 'international').length;
+    const cntText = g === '4号乗り場' && intlCount > 0
+      ? `${flights.length}(内国際線${intlCount}便)`
+      : flights.length;
+    document.getElementById(cntMap[g]).textContent = cntText;
     const wc = calcWindowCount(flights);
     const winEl = document.getElementById(winMap[g]);
     if (wc !== null) {
