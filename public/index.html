@@ -400,11 +400,23 @@ function renderCard(f) {
 
 function calcWindowCount(flights) {
   if (!flights || flights.length === 0) return null;
-  const first = flights[0];
+
+  // 現在時刻（7:00-29:00軸）
+  const now = new Date();
+  let h = now.getHours(), m = now.getMinutes();
+  if (h < 7) h += 24;
+  const nowMin = h * 60 + m;
+
+  // 現在時刻以降の最初の便を基準にする
+  const first = flights.find(f => f.adjustedMinutes >= nowMin) || flights[0];
   const baseMin = first.adjustedMinutes;
   if (baseMin === Infinity) return null;
-  const inWindow = flights.slice(1).filter(f =>
-    f.adjustedMinutes >= baseMin - 10 && f.adjustedMinutes <= baseMin + 60
+
+  // 基準便を除いた、前10分〜後1時間の便
+  const inWindow = flights.filter(f =>
+    f !== first &&
+    f.adjustedMinutes >= baseMin - 10 &&
+    f.adjustedMinutes <= baseMin + 60
   );
   return {
     total: inWindow.length,
