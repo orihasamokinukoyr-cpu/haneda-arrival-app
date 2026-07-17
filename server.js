@@ -183,7 +183,7 @@ function serveIcon(res, size) {
 
 // Simple static file server
 function serveStatic(req, res) {
-  let filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
+  let filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url)
   const ext = path.extname(filePath);
   const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css' }[ext] || 'text/plain';
   fs.readFile(filePath, (err, data) => {
